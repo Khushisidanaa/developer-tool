@@ -6,19 +6,34 @@ const XtermComponent = () => {
   const terminalRef = useRef(null);
 
   useEffect(() => {
-    const terminal = new Terminal();
-    terminal.open(terminalRef.current);
+    requestAnimationFrame(() => {
+      const terminal = new Terminal();
+      if (terminalRef.current) {
+        terminal.open(terminalRef.current);
+      }
 
-    const ws = new WebSocket("ws://localhost:8080");
-    ws.onopen = () => {
-      terminal.onData((data) => ws.send(data));
-      ws.onmessage = (event) => terminal.write(event.data);
-    };
+      const ws = new WebSocket("ws://localhost:8080");
+      ws.onopen = () => {
+        console.log("WebSocket connected.");
+        terminal.onData((data) => ws.send(data));
+        ws.onmessage = (event) => terminal.write(event.data);
+      };
 
-    return () => {
-      terminal.dispose();
-      ws.close();
-    };
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+      };
+
+      ws.onclose = (event) => {
+        console.log("WebSocket disconnected:", event);
+      };
+
+      return () => {
+        terminal.dispose();
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.close();
+        }
+      };
+    });
   }, []);
 
   return <div ref={terminalRef} style={{ height: "100%", width: "100%" }} />;
